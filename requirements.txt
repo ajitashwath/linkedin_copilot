@@ -6,3 +6,10 @@ requests
 pydantic
 openai
 google-search-results
+chromadb==0.5.23
+embedchain==0.1.128
+posthog>=3.0.2,<4.0.0
+rich>=13.7.0,<14.0.0
+numpy>=1.26.0,<2.2.0
+tenacity>=8.2.3,<9.0.0
+packaging>=23.2,<25.0

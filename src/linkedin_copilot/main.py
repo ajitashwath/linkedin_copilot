@@ -1,8 +1,16 @@
+'''
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+sys.modules["sqlite3.dbapi2"] = sys.modules["pysqlite3.dbapi2"]
+'''
+
 import os
 import requests
 import json
 from datetime import datetime
 from src.linkedin_copilot.crew import LinkedinCopilotCrew
+
 
 class LinkedInCopilot:
     def __init__(self):

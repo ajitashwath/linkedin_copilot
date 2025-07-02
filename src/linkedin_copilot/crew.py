@@ -1,6 +1,6 @@
 from crewai import Agent, Crew, Process, Task
 from crewai_tools import SerperDevTool
-from src.linkedin_copilot.tools.custom_tool import LinkedInTool
+from src.linkedin_copilot.tools.custom_tool import LinkedInAuth
 import yaml
 import os
 
@@ -9,7 +9,7 @@ class LinkedinCopilotCrew:
     
     def __init__(self):
         self.serper_tool = SerperDevTool()
-        self.linkedin_tool = LinkedInTool()
+        self.linkedin_tool = LinkedInAuth()
         self.agents_config = self._load_config('config/agents.yaml')
         self.tasks_config = self._load_config('config/tasks.yaml')
     
@@ -50,7 +50,7 @@ class LinkedinCopilotCrew:
             role=config.get('role', 'Lead Generation Specialist'),
             goal=config.get('goal', 'Identify and analyze potential leads from LinkedIn engagement'),
             backstory=config.get('backstory', 'You are a lead generation expert.'),
-            tools=[self.linkedin_tool],
+            tools=[self.linkedin_auth],
             verbose=True
         )
     
