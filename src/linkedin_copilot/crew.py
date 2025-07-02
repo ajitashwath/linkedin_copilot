@@ -9,7 +9,7 @@ class LinkedinCopilotCrew:
     
     def __init__(self):
         self.serper_tool = SerperDevTool()
-        self.linkedin_tool = LinkedInAuth()
+        self.linkedin_auth = LinkedInAuth()  # Fixed: changed from linkedin_tool to linkedin_auth
         self.agents_config = self._load_config('config/agents.yaml')
         self.tasks_config = self._load_config('config/tasks.yaml')
     
@@ -50,7 +50,7 @@ class LinkedinCopilotCrew:
             role=config.get('role', 'Lead Generation Specialist'),
             goal=config.get('goal', 'Identify and analyze potential leads from LinkedIn engagement'),
             backstory=config.get('backstory', 'You are a lead generation expert.'),
-            tools=[self.linkedin_auth],
+            tools=[self.linkedin_auth],  # Fixed: using correct attribute name
             verbose=True
         )
     
@@ -68,8 +68,9 @@ class LinkedinCopilotCrew:
     def create_research_task(self, topic, agent):
         """Create research task"""
         config = self.tasks_config.get('research_topic', {})
-        description = config.get('description', f"Research the topic '{topic}' and gather current information.")
-        description = description.format(topic=topic)
+        # Fixed: Ensure we have a valid string for description
+        base_description = config.get('description', "Research the topic '{topic}' and gather current information.")
+        description = base_description.format(topic=topic if topic else "general business trends")
         
         return Task(
             description=description,
@@ -80,8 +81,9 @@ class LinkedinCopilotCrew:
     def create_content_task(self, topic, agent):
         """Create content creation task"""
         config = self.tasks_config.get('create_content', {})
-        description = config.get('description', f"Create an engaging LinkedIn post about '{topic}'.")
-        description = description.format(topic=topic)
+        # Fixed: Ensure we have a valid string for description
+        base_description = config.get('description', "Create an engaging LinkedIn post about '{topic}'.")
+        description = base_description.format(topic=topic if topic else "general business topics")
         
         return Task(
             description=description,
@@ -109,11 +111,14 @@ class LinkedinCopilotCrew:
     
     def create_content_crew(self, topic):
         """Create crew for content generation"""
+        # Fixed: Ensure topic is not None
+        safe_topic = topic if topic else "general business trends"
+        
         researcher = self.create_researcher()
         content_creator = self.create_content_creator()
         
-        research_task = self.create_research_task(topic, researcher)
-        content_task = self.create_content_task(topic, content_creator)
+        research_task = self.create_research_task(safe_topic, researcher)
+        content_task = self.create_content_task(safe_topic, content_creator)
         
         return Crew(
             agents=[researcher, content_creator],

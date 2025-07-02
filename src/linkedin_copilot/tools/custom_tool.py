@@ -11,8 +11,8 @@ class LinkedInAuth:
     def __init__(self, client_id: str = None, client_secret: str = None):
         self.client_id = client_id or os.getenv('LINKEDIN_CLIENT_ID')
         self.client_secret = client_secret or os.getenv('LINKEDIN_CLIENT_SECRET')
-        self.redirect_uri = "http://localhost:8501"
-        self.scope = "r_liteprofile r_emailaddress w_member_social"
+        self.redirect_uri = os.getenv('LINKEDIN_REDIRECT_URI', 'http://localhost:8501')
+        self.scope = "openid profile w_member_social email"
         
         # LinkedIn API endpoints
         self.auth_url = "https://www.linkedin.com/oauth/v2/authorization"
