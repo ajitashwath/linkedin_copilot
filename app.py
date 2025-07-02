@@ -28,7 +28,7 @@ class LinkedInAuth:
     def __init__(self):
         self.client_id = os.getenv('LINKEDIN_CLIENT_ID')
         self.client_secret = os.getenv('LINKEDIN_CLIENT_SECRET')
-        self.redirect_uri = "http://localhost:8501"
+        self.redirect_uri = "https://linkedin-copilot.streamlit.app/signin-linkedin/"
         
         self.scope = "openid profile w_member_social email"
         
@@ -38,7 +38,6 @@ class LinkedInAuth:
             'client_id': self.client_id,
             'redirect_uri': self.redirect_uri,
             'scope': self.scope,
-            'state': 'linkedin_auth'  # CSRF protection
         }
         
         base_url = "https://www.linkedin.com/oauth/v2/authorization"
