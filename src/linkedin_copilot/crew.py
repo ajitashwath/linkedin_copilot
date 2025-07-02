@@ -9,7 +9,7 @@ class LinkedinCopilotCrew:
     
     def __init__(self):
         self.serper_tool = SerperDevTool()
-        self.linkedin_auth = LinkedInAuth()  # Fixed: changed from linkedin_tool to linkedin_auth
+        self.linkedin_auth = LinkedInAuth()
         self.agents_config = self._load_config('config/agents.yaml')
         self.tasks_config = self._load_config('config/tasks.yaml')
     
@@ -50,7 +50,7 @@ class LinkedinCopilotCrew:
             role=config.get('role', 'Lead Generation Specialist'),
             goal=config.get('goal', 'Identify and analyze potential leads from LinkedIn engagement'),
             backstory=config.get('backstory', 'You are a lead generation expert.'),
-            tools=[self.linkedin_auth],  # Fixed: using correct attribute name
+            #tools=[self.linkedin_auth],
             verbose=True
         )
     

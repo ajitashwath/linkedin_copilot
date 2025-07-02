@@ -6,18 +6,16 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 class LinkedInAuth:
-    """Handle LinkedIn OAuth authentication"""
-    
     def __init__(self, client_id: str = None, client_secret: str = None):
         self.client_id = client_id or os.getenv('LINKEDIN_CLIENT_ID')
         self.client_secret = client_secret or os.getenv('LINKEDIN_CLIENT_SECRET')
-        self.redirect_uri = os.getenv('LINKEDIN_REDIRECT_URI', 'http://localhost:8501')
+        self.redirect_uri = "http://localhost:8501"
         self.scope = "openid profile w_member_social email"
         
         # LinkedIn API endpoints
         self.auth_url = "https://www.linkedin.com/oauth/v2/authorization"
         self.token_url = "https://www.linkedin.com/oauth/v2/accessToken"
-        self.profile_url = "https://api.linkedin.com/v2/people/~"
+        self.profile_url = "https://api.linkedin.com/v2/userinfo"
         self.email_url = "https://api.linkedin.com/v2/emailAddress"
     
     def get_auth_url(self) -> str:
@@ -33,7 +31,9 @@ class LinkedInAuth:
             'state': 'linkedin_auth'  # CSRF protection
         }
         
-        return f"{self.auth_url}?{urllib.parse.urlencode(params)}"
+        url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
+        print(f"Generated auth URL: {url}")
+        return url
     
     def exchange_code_for_token(self, auth_code: str) -> Optional[Dict[str, Any]]:
         """Exchange authorization code for access token"""
@@ -77,82 +77,87 @@ class LinkedInAuth:
             return None
     
     def get_user_profile(self, access_token: str) -> Optional[Dict[str, Any]]:
-        """Get user profile from LinkedIn API"""
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         }
         
         try:
-            # Get basic profile with extended projection
-            profile_projection = (
-                "id,firstName,lastName,headline,industry,positions,"
-                "profilePicture(displayImage~:playableStreams)"
-            )
-            
             profile_response = requests.get(
-                f'{self.profile_url}?projection=({profile_projection})',
+                self.profile_url,
                 headers=headers,
                 timeout=10
             )
+            
+            print(f"Profile response status: {profile_response.status_code}")
+            print(f"Profile response: {profile_response.text}")
+            
             profile_response.raise_for_status()
             profile_data = profile_response.json()
-            
-            # Get email address
-            email_response = requests.get(
-                f'{self.email_url}?q=members&projection=(elements*(handle~))',
-                headers=headers,
-                timeout=10
-            )
-            
-            email_data = {}
-            if email_response.status_code == 200:
-                email_data = email_response.json()
+            formatted_profile = {
+                'id': profile_data.get('sub'),
+                'firstName': {
+                    'localized': {
+                        'en_US': profile_data.get('given_name', 'User')
+                    }
+                },
+                'lastName': {
+                    'localized': {
+                        'en_US': profile_data.get('family_name', '')
+                    }
+                },
+                'headline': {
+                    'localized': {
+                        'en_US': profile_data.get('headline', 'LinkedIn User')
+                    }
+                }
+            }
+            if profile_data.get('picture'):
+                formatted_profile['profilePicture'] = {
+                    'displayImage~': {
+                        'elements': [{
+                            'identifiers': [{'identifier': profile_data['picture']}]
+                        }]
+                    }
+                }
             
             return {
-                'profile': profile_data,
-                'email': email_data
+                'profile': formatted_profile,
+                'email': {
+                    'elements': [{
+                        'handle~': {
+                            'emailAddress': profile_data.get('email', '')
+                        }
+                    }]
+                }
             }
             
         except requests.exceptions.RequestException as e:
             print(f"Failed to get user profile: {e}")
+            if hasattr(e, 'response') and e.response:
+                print(f"Response content: {e.response.text}")
             return None
     
     def is_token_valid(self, token_data: Optional[Dict[str, Any]]) -> bool:
         """Check if access token is still valid"""
         if not token_data or 'expires_at' not in token_data:
             return False
-        
-        # Add 5 minute buffer to handle network delays
         buffer_time = timedelta(minutes=5)
         return datetime.now() + buffer_time < token_data['expires_at']
     
     def refresh_token_if_needed(self, token_data: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-        """
-        Check if token needs refresh and refresh if possible
-        Note: LinkedIn doesn't provide refresh tokens, so re-authentication is required
-        """
         if not self.is_token_valid(token_data):
             print("Token has expired. Re-authentication required.")
             return None
         return token_data
     
     def revoke_token(self, access_token: str) -> bool:
-        """
-        Revoke access token (logout)
-        LinkedIn doesn't have a standard revoke endpoint, so we'll just invalidate locally
-        """
-        # LinkedIn doesn't provide a token revocation endpoint
-        # The token will expire naturally or user can revoke access from LinkedIn settings
         return True
     
     def get_user_display_name(self, profile_data: Dict[str, Any]) -> str:
-        """Extract display name from profile data"""
         try:
             first_name = profile_data.get('firstName', {}).get('localized', {})
             last_name = profile_data.get('lastName', {}).get('localized', {})
-            
-            # Get the first available localized name
             first_name_value = next(iter(first_name.values())) if first_name else 'User'
             last_name_value = next(iter(last_name.values())) if last_name else ''
             

@@ -6,6 +6,7 @@ import requests
 import json
 import urllib.parse
 from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
 
 # Add src to path BEFORE importing custom modules
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -23,16 +24,15 @@ st.set_page_config(
 )
 
 class LinkedInAuth:
-    """Handle LinkedIn OAuth authentication - standalone class"""
-    
+
     def __init__(self):
         self.client_id = os.getenv('LINKEDIN_CLIENT_ID')
         self.client_secret = os.getenv('LINKEDIN_CLIENT_SECRET')
         self.redirect_uri = "http://localhost:8501"
-        self.scope = "r_liteprofile r_emailaddress w_member_social"
+        
+        self.scope = "openid profile w_member_social email"
         
     def get_auth_url(self):
-        """Generate LinkedIn OAuth authorization URL"""
         params = {
             'response_type': 'code',
             'client_id': self.client_id,
@@ -42,16 +42,17 @@ class LinkedInAuth:
         }
         
         base_url = "https://www.linkedin.com/oauth/v2/authorization"
-        return f"{base_url}?{urllib.parse.urlencode(params)}"
+        url = f"{base_url}?{urllib.parse.urlencode(params)}"
+        print(f"Generated OAuth URL: {url}") 
+        return url
     
     def exchange_code_for_token(self, auth_code):
-        """Exchange authorization code for access token"""
         token_url = "https://www.linkedin.com/oauth/v2/accessToken"
         
         data = {
             'grant_type': 'authorization_code',
             'code': auth_code,
-            'redirect_uri': self.redirect_uri,
+            'redirect_uri': self.redirect_uri,  # MUST match exactly
             'client_id': self.client_id,
             'client_secret': self.client_secret
         }
@@ -60,8 +61,14 @@ class LinkedInAuth:
             'Content-Type': 'application/x-www-form-urlencoded'
         }
         
+        print(f"Token exchange data: {data}")  # Debug
+        
         try:
             response = requests.post(token_url, data=data, headers=headers)
+            
+            print(f"Token response status: {response.status_code}")
+            print(f"Token response text: {response.text}")
+            
             response.raise_for_status()
             
             token_data = response.json()
@@ -78,40 +85,69 @@ class LinkedInAuth:
             
         except requests.exceptions.RequestException as e:
             st.error(f"Failed to exchange code for token: {e}")
+            if hasattr(e, 'response') and e.response:
+                st.error(f"Response: {e.response.text}")
             return None
         except json.JSONDecodeError:
             st.error("Invalid response from LinkedIn token endpoint")
             return None
     
     def get_user_profile(self, access_token):
-        """Get user profile from LinkedIn API"""
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         }
         
         try:
-            # Get basic profile
             profile_response = requests.get(
-                'https://api.linkedin.com/v2/people/~?projection=(id,firstName,lastName,headline,profilePicture(displayImage~:playableStreams))',
+                'https://api.linkedin.com/v2/userinfo',
                 headers=headers
             )
+            
+            print(f"Profile API response: {profile_response.status_code}")
+            print(f"Profile API content: {profile_response.text}")
+            
             profile_response.raise_for_status()
             profile_data = profile_response.json()
             
-            # Get email address
-            email_response = requests.get(
-                'https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))',
-                headers=headers
-            )
+            # Convert to expected format
+            formatted_profile = {
+                'id': profile_data.get('sub'),
+                'firstName': {
+                    'localized': {
+                        'en_US': profile_data.get('given_name', 'User')
+                    }
+                },
+                'lastName': {
+                    'localized': {
+                        'en_US': profile_data.get('family_name', '')
+                    }
+                },
+                'headline': {
+                    'localized': {
+                        'en_US': profile_data.get('headline', 'LinkedIn User')
+                    }
+                }
+            }
             
-            email_data = {}
-            if email_response.status_code == 200:
-                email_data = email_response.json()
+            if profile_data.get('picture'):
+                formatted_profile['profilePicture'] = {
+                    'displayImage~': {
+                        'elements': [{
+                            'identifiers': [{'identifier': profile_data['picture']}]
+                        }]
+                    }
+                }
             
             return {
-                'profile': profile_data,
-                'email': email_data
+                'profile': formatted_profile,
+                'email': {
+                    'elements': [{
+                        'handle~': {
+                            'emailAddress': profile_data.get('email', '')
+                        }
+                    }]
+                }
             }
             
         except requests.exceptions.RequestException as e:
@@ -119,7 +155,6 @@ class LinkedInAuth:
             return None
     
     def is_token_valid(self, token_data):
-        """Check if access token is still valid"""
         if not token_data or 'expires_at' not in token_data:
             return False
         
