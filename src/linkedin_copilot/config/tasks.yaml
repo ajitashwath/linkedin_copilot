@@ -1,0 +1,68 @@
+research_topic:
+  description: >
+    Research the topic '{topic}' and gather current information, trends, statistics, 
+    and insights that would be valuable for a LinkedIn post. Focus on:
+    - Recent developments and news
+    - Industry statistics and data
+    - Expert opinions and quotes
+    - Trending hashtags
+    - Professional relevance and impact
+  expected_output: >
+    Comprehensive research summary with key insights, statistics, and current trends
+    related to the topic, formatted for content creation use.
+
+create_content:
+  description: >
+    Based on the research provided, create an engaging LinkedIn post about '{topic}'.
+    The post should:
+    - Start with an attention-grabbing hook
+    - Include 2-3 valuable insights or key points
+    - Be professionally written but conversational in tone
+    - Include 3-5 relevant hashtags
+    - Be between 150-300 words
+    - End with an engaging question to encourage comments
+    - Follow LinkedIn best practices for formatting
+  expected_output: >
+    A complete, ready-to-publish LinkedIn post that is engaging, professional, 
+    and optimized for LinkedIn's algorithm.
+
+daily_summary:
+  description: >
+    Research and summarize today's most important business and technology news. 
+    Focus on trends that would be relevant for LinkedIn professionals including:
+    - Major business developments
+    - Technology innovations
+    - Market movements
+    - Industry insights
+    - Career and professional development news
+    Provide a concise summary of 3-5 key points.
+  expected_output: >
+    A concise daily summary highlighting 3-5 key business/technology news items
+    that would interest LinkedIn professionals.
+
+find_leads:
+  description: >
+    Analyze LinkedIn engagement data and user interactions to identify potential leads.
+    Look for:
+    - Users who frequently engage with business content
+    - Profiles that match target customer personas
+    - Comments indicating business needs or interests
+    - Connection opportunities with decision-makers
+    - Patterns that suggest buying intent
+    Provide a prioritized list with brief reasoning for each lead.
+  expected_output: >
+    A prioritized list of potential leads with profile insights and reasoning
+    for why they represent good business opportunities.
+
+analyze_engagement:
+  description: >
+    Analyze the engagement metrics and user interactions from recent LinkedIn posts.
+    Examine:
+    - Like patterns and user profiles
+    - Comment quality and business relevance
+    - Share activity and reach
+    - Profile analysis of engaged users
+    - Identification of potential business opportunities
+  expected_output: >
+    Detailed engagement analysis with insights about audience quality and
+    potential business opportunities from the interactions.
