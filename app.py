@@ -17,7 +17,6 @@ load_dotenv()
 # Page config
 st.set_page_config(
     page_title="LinkedIn Copilot",
-    page_icon="🔗",
     layout="wide"
 )
 
