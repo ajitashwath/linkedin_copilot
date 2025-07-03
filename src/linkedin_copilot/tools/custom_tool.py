@@ -10,7 +10,7 @@ class LinkedInAuth:
         self.client_id = client_id or os.getenv('LINKEDIN_CLIENT_ID')
         self.client_secret = client_secret or os.getenv('LINKEDIN_CLIENT_SECRET')
         self.redirect_uri = "https://linkedin-copilot.streamlit.app/signin-linkedin"
-        self.scope = "openid profile email w_member_social"
+        self.scope = "openid profile email w_member_social r_liteprofile"
         
         # LinkedIn API endpoints
         self.auth_url = "https://www.linkedin.com/oauth/v2/authorization"
