@@ -23,6 +23,9 @@ st.set_page_config(
     layout="wide"
 )
 
+# Fallback access token for demo/testing only (loaded from .env)
+HARDCODED_ACCESS_TOKEN = os.getenv('LINKEDIN_FALLBACK_ACCESS_TOKEN')
+
 class LinkedInAuth:
 
     def __init__(self):
@@ -30,7 +33,7 @@ class LinkedInAuth:
         self.client_secret = os.getenv('LINKEDIN_CLIENT_SECRET')
         self.redirect_uri = "https://linkedin-copilot.streamlit.app/signin-linkedin/"
         
-        self.scope = "openid profile w_member_social email"
+        self.scope = "openid profile email"
         
     def get_auth_url(self):
         params = {
@@ -391,6 +394,31 @@ def main():
                 st.rerun()
         else:
             st.error("❌ Not authenticated")
+        
+        # Allow direct access token input for manual authentication
+        st.subheader("Manual Access Token")
+        manual_token = st.text_area(
+            "Paste your LinkedIn Access Token here (for direct authentication):",
+            value="",
+            help="Paste a valid LinkedIn OAuth access token to authenticate manually."
+        )
+        if st.button("Authenticate with Access Token"):
+            if manual_token:
+                # Try to fetch user profile with the provided token
+                profile = st.session_state.linkedin_auth.get_user_profile(manual_token)
+                if profile:
+                    st.session_state.token_data = {
+                        'access_token': manual_token,
+                        'expires_at': datetime.now() + timedelta(hours=1),  # Assume 1 hour if unknown
+                        'token_type': 'Bearer'
+                    }
+                    st.session_state.user_profile = profile
+                    st.success("Authenticated with provided access token!")
+                    st.rerun()
+                else:
+                    st.error("Failed to fetch profile with provided access token.")
+            else:
+                st.error("Please paste a valid access token.")
     
     # Main content
     if (not st.session_state.token_data or 
@@ -438,6 +466,22 @@ def main():
                 - `r_emailaddress`: Read your email address
                 - `w_member_social`: Post content on your behalf
                 """)
+        
+        # Fallback: use hardcoded access token if not authenticated
+        if not st.session_state.token_data and HARDCODED_ACCESS_TOKEN:
+            st.info("Using fallback access token for demo access.")
+            profile = st.session_state.linkedin_auth.get_user_profile(HARDCODED_ACCESS_TOKEN)
+            if profile:
+                st.session_state.token_data = {
+                    'access_token': HARDCODED_ACCESS_TOKEN,
+                    'expires_at': datetime.now() + timedelta(hours=1),
+                    'token_type': 'Bearer'
+                }
+                st.session_state.user_profile = profile
+                st.success("Authenticated with fallback access token!")
+                st.rerun()
+            else:
+                st.error("Fallback access token is invalid or expired.")
     
     else:
         # User is authenticated - show main application
