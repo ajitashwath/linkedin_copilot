@@ -38,7 +38,7 @@ class LinkedInCopilot:
         try:
             # Get user profile ID first
             profile_response = requests.get(
-                'https://api.linkedin.com/v2/people/~',
+                'https://api.linkedin.com/v2/me',
                 headers={'Authorization': f'Bearer {access_token}'}
             )
             
