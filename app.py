@@ -491,11 +491,11 @@ def main():
                                 edited_content,
                                 st.session_state.token_data['access_token']
                             )
-                            if result:
+                            if result is True:
                                 st.success("✅ Posted successfully to LinkedIn!")
                                 st.balloons()
                             else:
-                                st.error("❌ Failed to post to LinkedIn")
+                                st.error(f"❌ Failed to post to LinkedIn: {result}")
                         except Exception as e:
                             st.error(f"Error posting: {str(e)}")
             

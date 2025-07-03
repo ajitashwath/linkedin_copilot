@@ -1,9 +1,7 @@
-'''
 __import__('pysqlite3')
 import sys
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 sys.modules["sqlite3.dbapi2"] = sys.modules["pysqlite3.dbapi2"]
-'''
 
 import os
 import requests
@@ -45,7 +43,9 @@ class LinkedInCopilot:
             )
             
             if profile_response.status_code != 200:
-                return False
+                error_msg = f"Failed to fetch profile: {profile_response.status_code} - {profile_response.text}"
+                print(error_msg)
+                return error_msg
                 
             profile_data = profile_response.json()
             person_urn = profile_data['id']
@@ -78,11 +78,18 @@ class LinkedInCopilot:
                 json=post_data
             )
             
-            return response.status_code == 201
-            
+            if response.status_code == 201:
+                return True
+            else:
+                error_msg = f"LinkedIn API error: {response.status_code} - {response.text}"
+                print(error_msg)
+                return error_msg
+        
         except Exception as e:
-            print(f"Error posting to LinkedIn: {e}")
-            return False
+            import traceback
+            tb = traceback.format_exc()
+            print(f"Error posting to LinkedIn: {e}\n{tb}")
+            return f"Exception: {e}\n{tb}"
     
     def find_leads(self, access_token):
         """Find potential leads from recent engagement"""
