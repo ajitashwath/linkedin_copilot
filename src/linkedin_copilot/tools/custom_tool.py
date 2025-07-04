@@ -10,13 +10,12 @@ class LinkedInAuth:
         self.client_id = client_id or os.getenv('LINKEDIN_CLIENT_ID')
         self.client_secret = client_secret or os.getenv('LINKEDIN_CLIENT_SECRET')
         self.redirect_uri = "https://linkedin-copilot.streamlit.app/signin-linkedin"
-        self.scope = "openid profile email w_member_social r_liteprofile"
+        self.scope = "openid profile email w_member_social r_liteprofile w_organization_social"
         
         # LinkedIn API endpoints
         self.auth_url = "https://www.linkedin.com/oauth/v2/authorization"
         self.token_url = "https://www.linkedin.com/oauth/v2/accessToken"
         self.profile_url = "https://api.linkedin.com/v2/userinfo"
-        self.email_url = "https://api.linkedin.com/v2/emailAddress"
     
     def get_auth_url(self) -> str:
         """Generate LinkedIn OAuth authorization URL"""
@@ -76,66 +75,69 @@ class LinkedInAuth:
             print(f"Invalid response from LinkedIn token endpoint: {e}")
             return None
     
-    def get_user_profile(self, access_token: str) -> Optional[Dict[str, Any]]:
+    def get_user_profile(self, access_token: str):
+        """Get user profile with proper error handling"""
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         }
         
         try:
+            # Try userinfo endpoint first
             profile_response = requests.get(
                 self.profile_url,
                 headers=headers,
                 timeout=10
             )
             
-            print(f"Profile response status: {profile_response.status_code}")
-            print(f"Profile response: {profile_response.text}")
-            
-            profile_response.raise_for_status()
-            profile_data = profile_response.json()
-            formatted_profile = {
-                'id': profile_data.get('sub'),
-                'firstName': {
-                    'localized': {
-                        'en_US': profile_data.get('given_name', 'User')
-                    }
-                },
-                'lastName': {
-                    'localized': {
-                        'en_US': profile_data.get('family_name', '')
-                    }
-                },
-                'headline': {
-                    'localized': {
-                        'en_US': profile_data.get('headline', 'LinkedIn User')
+            if profile_response.status_code == 200:
+                profile_data = profile_response.json()
+                
+                # Format the response consistently
+                formatted_profile = {
+                    'id': profile_data.get('sub'),
+                    'firstName': {
+                        'localized': {
+                            'en_US': profile_data.get('given_name', 'User')
+                        }
+                    },
+                    'lastName': {
+                        'localized': {
+                            'en_US': profile_data.get('family_name', '')
+                        }
+                    },
+                    'headline': {
+                        'localized': {
+                            'en_US': profile_data.get('headline', 'LinkedIn User')
+                        }
                     }
                 }
-            }
-            if profile_data.get('picture'):
-                formatted_profile['profilePicture'] = {
-                    'displayImage~': {
+                
+                if profile_data.get('picture'):
+                    formatted_profile['profilePicture'] = {
+                        'displayImage~': {
+                            'elements': [{
+                                'identifiers': [{'identifier': profile_data['picture']}]
+                            }]
+                        }
+                    }
+                
+                return {
+                    'profile': formatted_profile,
+                    'email': {
                         'elements': [{
-                            'identifiers': [{'identifier': profile_data['picture']}]
+                            'handle~': {
+                                'emailAddress': profile_data.get('email', '')
+                            }
                         }]
                     }
                 }
-            
-            return {
-                'profile': formatted_profile,
-                'email': {
-                    'elements': [{
-                        'handle~': {
-                            'emailAddress': profile_data.get('email', '')
-                        }
-                    }]
-                }
-            }
-            
+            else:
+                print(f"Profile fetch failed: {profile_response.status_code} - {profile_response.text}")
+                return None
+                
         except requests.exceptions.RequestException as e:
             print(f"Failed to get user profile: {e}")
-            if hasattr(e, 'response') and e.response:
-                print(f"Response content: {e.response.text}")
             return None
     
     def is_token_valid(self, token_data: Optional[Dict[str, Any]]) -> bool:

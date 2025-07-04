@@ -15,42 +15,42 @@ class LinkedInCopilot:
         """Initialize LinkedIn Copilot with crew configuration"""
         self.crew_config = LinkedinCopilotCrew()
     
-    def get_daily_summary(self):
-        """Get today's news summary"""
-        try:
-            crew = self.crew_config.create_summary_crew()
-            result = crew.kickoff()
-            return str(result)
-        except Exception as e:
-            return f"Error getting daily summary: {str(e)}"
-    
-    def generate_content(self, topic):
-        """Generate LinkedIn content for given topic"""
-        try:
-            crew = self.crew_config.create_content_crew(topic)
-            result = crew.kickoff()
-            return str(result)
-        except Exception as e:
-            return f"Error generating content: {str(e)}"
-    
     def post_to_linkedin(self, content, access_token):
-        """Post content to LinkedIn"""
+        """Post content to LinkedIn with proper API calls"""
         try:
-            # Get user profile ID first
+            # Use the correct endpoint for getting user profile
+            # Try v2/userinfo first (works with openid scope)
             profile_response = requests.get(
-                'https://api.linkedin.com/v2/me',
+                'https://api.linkedin.com/v2/userinfo',
                 headers={'Authorization': f'Bearer {access_token}'}
             )
             
-            if profile_response.status_code != 200:
-                error_msg = f"Failed to fetch profile: {profile_response.status_code} - {profile_response.text}"
-                print(error_msg)
-                return error_msg
+            if profile_response.status_code == 200:
+                profile_data = profile_response.json()
+                person_urn = profile_data.get('sub')  # 'sub' field contains the user ID
                 
-            profile_data = profile_response.json()
-            person_urn = profile_data['id']
+                if not person_urn:
+                    return "Failed to get user ID from profile"
+                    
+            else:
+                # Fallback: try the people endpoint with r_liteprofile scope
+                profile_response = requests.get(
+                    'https://api.linkedin.com/v2/people/(id:{person})',
+                    headers={'Authorization': f'Bearer {access_token}'}
+                )
+                
+                if profile_response.status_code != 200:
+                    error_msg = f"Failed to fetch profile: {profile_response.status_code} - {profile_response.text}"
+                    print(error_msg)
+                    return error_msg
+                    
+                profile_data = profile_response.json()
+                person_urn = profile_data.get('id')
             
-            # Create post
+            if not person_urn:
+                return "Could not extract person URN from profile"
+            
+            # Create the post using UGC API
             post_data = {
                 "author": f"urn:li:person:{person_urn}",
                 "lifecycleState": "PUBLISHED",
@@ -67,7 +67,7 @@ class LinkedInCopilot:
                 }
             }
             
-            # Post to LinkedIn
+            # Post to LinkedIn UGC API
             response = requests.post(
                 'https://api.linkedin.com/v2/ugcPosts',
                 headers={
@@ -89,7 +89,72 @@ class LinkedInCopilot:
             import traceback
             tb = traceback.format_exc()
             print(f"Error posting to LinkedIn: {e}\n{tb}")
-            return f"Exception: {e}\n{tb}"
+            return f"Exception: {e}"
+
+    def get_daily_summary(self):
+        """Get today's news summary"""
+        try:
+            crew = self.crew_config.create_summary_crew()
+            result = crew.kickoff()
+            return str(result)
+        except Exception as e:
+            return f"Error getting daily summary: {str(e)}"
+    
+    def generate_content(self, topic):
+        """Generate LinkedIn content for given topic"""
+        try:
+            crew = self.crew_config.create_content_crew(topic)
+            result = crew.kickoff()
+            return str(result)
+        except Exception as e:
+            return f"Error generating content: {str(e)}"
+    
+    def post_to_linkedin_share_api(self, content, access_token):
+        """Alternative method using LinkedIn Share API"""
+        try:
+            # Get user profile using the correct endpoint
+            profile_response = requests.get(
+                'https://api.linkedin.com/v2/userinfo',
+                headers={'Authorization': f'Bearer {access_token}'}
+            )
+            
+            if profile_response.status_code != 200:
+                return f"Failed to fetch profile: {profile_response.status_code} - {profile_response.text}"
+                
+            profile_data = profile_response.json()
+            person_urn = profile_data.get('sub')
+            
+            if not person_urn:
+                return "Could not extract person URN from profile"
+            
+            # Use the Share API instead
+            share_data = {
+                "owner": f"urn:li:person:{person_urn}",
+                "text": {
+                    "text": content
+                },
+                "visibility": {
+                    "code": "anyone"
+                }
+            }
+            
+            response = requests.post(
+                'https://api.linkedin.com/v2/shares',
+                headers={
+                    'Authorization': f'Bearer {access_token}',
+                    'Content-Type': 'application/json',
+                    'X-Restli-Protocol-Version': '2.0.0'
+                },
+                json=share_data
+            )
+            
+            if response.status_code == 201:
+                return True
+            else:
+                return f"LinkedIn Share API error: {response.status_code} - {response.text}"
+                
+        except Exception as e:
+            return f"Exception in share API: {e}"
     
     def find_leads(self, access_token):
         """Find potential leads from recent engagement"""
